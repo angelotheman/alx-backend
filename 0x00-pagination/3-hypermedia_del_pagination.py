@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
+"""Deletion-resilient hypermedia pagination
 """
-Deletion-resilient hypermedia pagination
-"""
-
 import csv
-from typing import List, Dict, Any
+from typing import Dict, List
 
 
 class Server:
@@ -13,6 +11,8 @@ class Server:
     DATA_FILE = "Popular_Baby_Names.csv"
 
     def __init__(self):
+        """Initializes a new Server instance.
+        """
         self.__dataset = None
         self.__indexed_dataset = None
 
@@ -32,36 +32,34 @@ class Server:
         """
         if self.__indexed_dataset is None:
             dataset = self.dataset()
+            truncated_dataset = dataset[:1000]
             self.__indexed_dataset = {
                 i: dataset[i] for i in range(len(dataset))
             }
         return self.__indexed_dataset
 
-    def get_hyper_index(self, index: int = None,
-                        page_size: int = 10) -> Dict[str, Any]:
+    def get_hyper_index(self, index: int = None, page_size: int = 10) -> Dict:
+        """Retrieves info about a page from a given index and with a
+        specified size.
         """
-        Returns hypermedia pagination info based on index and page_size
-        """
-        assert isinstance(index, int) and index >= 0, \
-            "Index must be a non-negative integer."
-        assert isinstance(page_size, int) and page_size > 0, \
-            "Page size must be a positive integer."
-
-        dataset = self.indexed_dataset()
-        max_index = len(dataset) - 1
-
-        assert index <= max_index,
-        f"Index {index} out of range. Maximum index is {max_index}."
-
-        start_index = index
-        next_index = start_index + page_size
-
-        data = [dataset[idx] for idx in range(start_index, min(
-            next_index, max_index + 1))]
-
-        return {
-            "index": start_index,
-            "next_index": next_index if next_index <= max_index else None,
-            "page_size": len(data),
-            "data": data
+        data = self.indexed_dataset()
+        assert index is not None and index >= 0 and index <= max(data.keys())
+        page_data = []
+        data_count = 0
+        next_index = None
+        start = index if index else 0
+        for i, item in data.items():
+            if i >= start and data_count < page_size:
+                page_data.append(item)
+                data_count += 1
+                continue
+            if data_count == page_size:
+                next_index = i
+                break
+        page_info = {
+            'index': index,
+            'next_index': next_index,
+            'page_size': len(page_data),
+            'data': page_data,
         }
+        return page_info
